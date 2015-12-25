@@ -22,7 +22,7 @@ client.auth_provider.authenticate(code, redirect_uri, client_secret)
 
 # Get Brent Mac Doc Backup folder
 startDir = client.item(drive="me", id="BCCC11629C5F7E3D!257166")
-
+checkTime = False
 
 def createNewFolder(folderName, parent):
     f = onedrivesdk.Folder()
@@ -30,10 +30,10 @@ def createNewFolder(folderName, parent):
     i.name = folderName
     i.folder = f
     returned_item = parent.children.add(i)
-    return client.item(drive="me", id=returned_item.id)
+    return returned_item.get()
 
 
-def getFolder(path, parent, cache={}):
+def getFolder(path, parent, root="", cache={}):
     if path == ".":
         return parent
 
@@ -43,9 +43,19 @@ def getFolder(path, parent, cache={}):
     dirs = path.split("/", 1)
     topFolder = dirs[0]
 
-    # Possible cache
-    # if topFolder in cache:
-    #     return getFolder()
+    # Check cache
+    #####################
+    i = 1
+    temp_path = path[:]
+    pth_splt = temp_path.rsplit("/", i)
+    while len(pth_splt) > 1:
+        p = pth_splt[0]
+        if p in cache:
+            return getFolder("/".join(pth_splt[1:]), client.item(drive="me", id=cache[p]), root=p)
+        i += 1
+        pth_splt = temp_path.rsplit(",", i)
+    #####################
+
     nextDir = None
 
     if parent.children:
@@ -53,16 +63,22 @@ def getFolder(path, parent, cache={}):
             if child.name == topFolder:
                 nextDir = client.item(drive="me", id=child.id)
                 break
+
     if nextDir is None:
         nextDir = createNewFolder(topFolder, parent)
+
+    # Add to cache
+    new_root = os.path.join(root, nextDir.get().name)
+    print "Root added to cache: ", new_root
+    cache[new_root] = nextDir.get().id
     # If we have reached the bottom folder
     if len(dirs) == 1:
         return nextDir
-    else:
-        return getFolder(dirs[1], nextDir)
+    else:   
+        return getFolder(dirs[1], nextDir, root=new_root)
 
-def getDateOneDrive(fileName, folder):
-    for child in folder.children.get():
+def getDateOneDrive(fileName, children):
+    for child in children:
         if child.name == fileName:
             # child = client.item(drive="me", id=child.id)
             return child.created_date_time
@@ -77,20 +93,23 @@ for root, dirs, files in os.walk("."):
     files = [f for f in files if not f[0] == '.']
     dirs[:] = [d for d in dirs if not d[0] == '.']
 
+    folder = getFolder(root, startDir)
     for f in files:
         if not f[0] == '.':
-            folder = getFolder(root, startDir)
-            if f not in [c.name for c in folder.children.get()]:
-                print "Uploading ", f
+            children = folder.children.get()
+            if all(c.name != f for c in children):
+                print "Uploading ", repr(f)
                 folder.children[f].upload(os.path.join(root, f))
-            else:
-                # Check if the file has been editted
-                dateEditedOneDrive = getDateOneDrive(f, folder)
-                dateEditedOneDrive = time.mktime(dateEditedOneDrive.timetuple())
-                dateEditedLocal = os.path.getmtime(os.path.join(root, f))
-                if int(dateEditedLocal) > int(dateEditedOneDrive):
-                    print "Uploading ", f
-                    folder.children[f].upload(os.path.join(root, f))
-                else:
-                    print "Has not been edited: ", f
-
+            elif checkTime:
+                # Check if the file has been edited
+                try:
+                    dateEditedOneDrive = getDateOneDrive(f, children)
+                    dateEditedOneDrive = time.mktime(dateEditedOneDrive.timetuple())
+                    dateEditedLocal = os.path.getmtime(os.path.join(root, f))
+                    if int(dateEditedLocal) > int(dateEditedOneDrive):
+                        print "Uploading ", f
+                        folder.children[f].upload(os.path.join(root, f))
+                    else:
+                        print "Has not been edited: ", f
+                except Exception:
+                    continue
