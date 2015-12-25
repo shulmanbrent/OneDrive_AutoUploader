@@ -1,4 +1,4 @@
-import os, json
+import os, json, time
 import onedrivesdk
 from onedrivesdk.helpers import GetAuthCodeServer
 
@@ -29,7 +29,6 @@ def createNewFolder(folderName, parent):
     i = onedrivesdk.Item()
     i.name = folderName
     i.folder = f
-    # print("\n\n" + folderName)
     returned_item = parent.children.add(i)
     return client.item(drive="me", id=returned_item.id)
 
@@ -41,7 +40,6 @@ def getFolder(path, parent, cache={}):
     if path.startswith("./"):
         # Remove ./
         path = path[2:]
-    print path
     dirs = path.split("/", 1)
     topFolder = dirs[0]
 
@@ -63,6 +61,14 @@ def getFolder(path, parent, cache={}):
     else:
         return getFolder(dirs[1], nextDir)
 
+def getDateOneDrive(fileName, folder):
+    for child in folder.children.get():
+        if child.name == fileName:
+            # child = client.item(drive="me", id=child.id)
+            return child.created_date_time
+    return None
+
+
 # Iterate through Documents subfolder
 os.chdir("/Users/shulmanbrent/Documents")
 for root, dirs, files in os.walk("."):
@@ -75,4 +81,16 @@ for root, dirs, files in os.walk("."):
         if not f[0] == '.':
             folder = getFolder(root, startDir)
             if f not in [c.name for c in folder.children.get()]:
+                print "Uploading ", f
                 folder.children[f].upload(os.path.join(root, f))
+            else:
+                # Check if the file has been editted
+                dateEditedOneDrive = getDateOneDrive(f, folder)
+                dateEditedOneDrive = time.mktime(dateEditedOneDrive.timetuple())
+                dateEditedLocal = os.path.getmtime(os.path.join(root, f))
+                if int(dateEditedLocal) > int(dateEditedOneDrive):
+                    print "Uploading ", f
+                    folder.children[f].upload(os.path.join(root, f))
+                else:
+                    print "Has not been edited: ", f
+
