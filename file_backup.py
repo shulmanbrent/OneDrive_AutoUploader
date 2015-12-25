@@ -3,7 +3,7 @@ import onedrivesdk
 from onedrivesdk.helpers import GetAuthCodeServer
 
 file = open("./config.json").read()
-file_json = json.loads(file)
+file_json = json.loads(file)['env']
 
 redirect_uri = file_json['redirect_uri']
 client_secret = file_json['client_secret']
@@ -74,5 +74,5 @@ for root, dirs, files in os.walk("."):
     for f in files:
         if not f[0] == '.':
             folder = getFolder(root, startDir)
-            if f not in [c.name for c in folder.children]:
+            if f not in [c.name for c in folder.children.get()]:
                 folder.children[f].upload(os.path.join(root, f))
