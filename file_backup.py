@@ -30,7 +30,7 @@ def createNewFolder(folderName, parent):
     i.name = folderName
     i.folder = f
     returned_item = parent.children.add(i)
-    return returned_item.get()
+    return client.item(drive="me", id=returned_item.id)
 
 
 def getFolder(path, parent, root="", cache={}):
@@ -74,8 +74,9 @@ def getFolder(path, parent, root="", cache={}):
     # If we have reached the bottom folder
     if len(dirs) == 1:
         return nextDir
-    else:   
+    else:
         return getFolder(dirs[1], nextDir, root=new_root)
+
 
 def getDateOneDrive(fileName, children):
     for child in children:
@@ -98,8 +99,11 @@ for root, dirs, files in os.walk("."):
         if not f[0] == '.':
             children = folder.children.get()
             if all(c.name != f for c in children):
-                print "Uploading ", repr(f)
-                folder.children[f].upload(os.path.join(root, f))
+                try:
+                    print "Uploading ", repr(f)
+                    folder.children[f].upload(os.path.join(root, f))
+                except Exception:
+                    continue
             elif checkTime:
                 # Check if the file has been edited
                 try:
