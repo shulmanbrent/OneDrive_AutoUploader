@@ -1,11 +1,14 @@
-import os
+import os, json
 import onedrivesdk
 from onedrivesdk.helpers import GetAuthCodeServer
 
-redirect_uri = "http://localhost:8080/"
-client_secret = "07gJj9AWEkiqWX1yS6gDEwCKq0Q4C6bS"
+file = open("./config.json").read()
+file_json = json.loads(file)
 
-client = onedrivesdk.get_default_client(client_id='000000004C17574C',
+redirect_uri = file_json['redirect_uri']
+client_secret = file_json['client_secret']
+
+client = onedrivesdk.get_default_client(client_id=file_json['client_id'],
                                         scopes=['wl.signin',
                                                 'wl.offline_access',
                                                 'onedrive.readwrite'])
@@ -71,5 +74,5 @@ for root, dirs, files in os.walk("."):
     for f in files:
         if not f[0] == '.':
             folder = getFolder(root, startDir)
-            print os.path.join(root, f)
-            folder.children[f].upload(os.path.join(root, f))
+            if f not in [c.name for c in folder.children]:
+                folder.children[f].upload(os.path.join(root, f))
