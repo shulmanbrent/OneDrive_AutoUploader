@@ -91,13 +91,22 @@ os.chdir("/Users/shulmanbrent/Documents")
 for root, dirs, files in os.walk("."):
     print "Uploading files from: ", root
     # Removes hidden directories and files
-    files = [f for f in files if not f[0] == '.']
+    # files = [f for f in files if not f[0] == '.']
     dirs[:] = [d for d in dirs if not d[0] == '.']
-
-    folder = getFolder(root, startDir)
-    for f in files:
+    
+    try:    
+        folder = getFolder(root, startDir)
+    except Exception:
+        continue
+    for i, f in enumerate(files):
+        if i < 25:
+            continue
         if not f[0] == '.':
-            children = folder.children.get()
+            children = None
+            try:
+                children = folder.children.get()
+            except Exception:
+                continue
             if all(c.name != f for c in children):
                 try:
                     print "Uploading ", repr(f)
